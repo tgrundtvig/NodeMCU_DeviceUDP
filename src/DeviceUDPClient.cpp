@@ -147,6 +147,7 @@ void DeviceUDPClient::onPacketReceived(unsigned long curTime, IPAddress srcAddre
     else
     {
       Serial.println("INITACK received");
+      _isSending = false;
     }
     return;
   }  
