@@ -136,7 +136,7 @@ void DeviceUDPClient::onPacketReceived(unsigned long curTime, IPAddress srcAddre
   {
     _curMsgId = 0;
     _lastReceivedMsgId = 0;
-    _isSending = false;
+    //_isSending = false;
     _sentCount = 0;
     if(command == INIT)
     {
