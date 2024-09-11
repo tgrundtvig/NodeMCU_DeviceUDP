@@ -65,8 +65,8 @@ void DeviceUDPClient::update(unsigned long curTime)
           _serverAddress = IPAddress(255, 255, 255, 255);
           Serial.print("timeSinceLastSend: ");
           Serial.print(timeSinceLastSend);
-          Serial.print(", _sendCount: ");
-          Serial.println(_sendCount);
+          Serial.print(", _sentCount: ");
+          Serial.println(_sentCount);
           
           onServerDisconnected(curTime);
           return;
