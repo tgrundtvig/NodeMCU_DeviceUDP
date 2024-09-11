@@ -104,6 +104,7 @@ void DeviceUDPClient::stop()
 
 void DeviceUDPClient::onPacketReceived(unsigned long curTime, IPAddress srcAddress, uint16_t srcPort, uint8_t* pData, uint16_t size)
 {
+  Serial.println("Packet received!");
   if(size < 16)
   {
     Serial.println("Packet too small");
@@ -140,7 +141,12 @@ void DeviceUDPClient::onPacketReceived(unsigned long curTime, IPAddress srcAddre
     _sentCount = 0;
     if(command == INIT)
     {
+      Serial.println("INIT received");
       _sendReplyPacket(msgId, INITACK, _deviceVersion, 0, (uint8_t*) _deviceType, strlen(_deviceType));
+    }
+    else
+    {
+      Serial.println("INITACK received");
     }
     return;
   }  
