@@ -123,6 +123,7 @@ void DeviceUDPClient::onPacketReceived(unsigned long curTime, IPAddress srcAddre
     if(_isSending && msgId == _curMsgId)
     {
       _isSending = false;
+      _sentCount = 0;
       //report delivered if it is not a PING.
       if(_readIntegerFromBuffer(_sendBuffer,10,2) != PING)
       {
