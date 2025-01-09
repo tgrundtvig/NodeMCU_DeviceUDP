@@ -109,6 +109,12 @@ void DeviceUDPClient::stop()
 
 void DeviceUDPClient::onPacketReceived(unsigned long curTime, IPAddress srcAddress, uint16_t srcPort, uint8_t* pData, uint16_t size)
 {
+  //Since we have received a package, we assume that wifi is connected...
+  if(!_wifiConnected)
+  {
+    _wifiConnected = true;
+    onWiFiConnected(curTime);
+  }
   Serial.print("Packet received: ");
   if(size < 16)
   {
@@ -121,36 +127,25 @@ void DeviceUDPClient::onPacketReceived(unsigned long curTime, IPAddress srcAddre
     Serial.println("Packet not for us!");
     return;
   }
+  //We assume that the packet comes from the server since it has the correct Device ID in the header
+  if(!_serverConnected)
+  {
+    _sentCount = 0; //Server just reconnected, so we reset send count for current message
+    _serverConnected = true;
+    _serverAddress = srcAddress;
+    onServerConnected(curTime);
+  }
+
+  //Update last receive time
+  _lastReceiveTime = curTime;
+
+  //Extract message ID and Command from message
   uint16_t msgId = _readIntegerFromBuffer(pData, 8, 2);
   uint16_t command = _readIntegerFromBuffer(pData, 10, 2);
-  Serial.print("msgId: ");
-  Serial.print(msgId);
-  Serial.print(", command: ");
-  Serial.println(command);
-  _lastReceiveTime = curTime;
-  if(command == MSGACK)
+  
+  //Handle INIT and INITACK
+  if(command == INIT || command == INITACK)
   {
-    Serial.print("MSGACK, msgID: ");
-    Serial.print(msgId);
-    Serial.print(", _curMsgID: ");
-    Serial.println(_curMsgId);
-
-    if(_isSending && msgId == _curMsgId)
-    {
-      _isSending = false;
-      _sentCount = 0;
-      //report delivered if it is not a PING.
-      if(_readIntegerFromBuffer(_sendBuffer,10,2) != PING)
-      {
-        uint16_t response = _readIntegerFromBuffer(pData, 12, 2);
-        onPacketDelivered(_curMsgId, response);
-      }
-    }
-    return;
-  }
-  if(command == INITACK || command == INIT)
-  {
-    _curMsgId = 0;
     _lastReceivedMsgId = 0;
     _sentCount = 0;
     if(command == INIT)
@@ -165,27 +160,41 @@ void DeviceUDPClient::onPacketReceived(unsigned long curTime, IPAddress srcAddre
     }
     return;
   }  
-  if(!_serverConnected)
+
+  //Handle PING from server
+  if(command == PING)
   {
-    _serverConnected = true;
-    _serverAddress = srcAddress;
-    onServerConnected(curTime);
+    _sendReplyPacket(msgId, MSGACK, 0, 0, 0, 0);
+    return;
   }
-  //Check if the message is a new message
+
+  //Handle MSGACK
+  if(command == MSGACK)
+  {
+    if(_isSending && msgId == _curMsgId)
+    {
+      //This is a MSGACK for the current message
+      _isSending = false;
+      _sentCount = 0;
+      //report delivered if the current sending message is not a PING.
+      if(_readIntegerFromBuffer(_sendBuffer,10,2) != PING)
+      {
+        //Read the response from the incoming message
+        uint16_t response = _readIntegerFromBuffer(pData, 12, 2);
+        onPacketDelivered(_curMsgId, response);
+      }
+    }
+    return;
+  }
+  
+  //This is a regular message from the server
   if( msgId > _lastReceivedMsgId || (_lastReceivedMsgId - msgId) > 30000 )
   {
     //We have a new message
     _lastReceivedMsgId = msgId;
-    if(command != PING)
-    {
-      uint16_t arg1 = _readIntegerFromBuffer(pData, 12, 2);
-      uint16_t arg2 = _readIntegerFromBuffer(pData, 14, 2);
-      _lastResponse = onPacketReceived(command, arg1, arg2, pData+16, size-16);
-    }
-    else
-    {
-      _lastResponse = 0;
-    }
+    uint16_t arg1 = _readIntegerFromBuffer(pData, 12, 2);
+    uint16_t arg2 = _readIntegerFromBuffer(pData, 14, 2);
+    _lastResponse = onPacketReceived(command, arg1, arg2, pData+16, size-16);
     _sendReplyPacket(msgId, MSGACK, _lastResponse, 0, 0, 0);
   }
   else
