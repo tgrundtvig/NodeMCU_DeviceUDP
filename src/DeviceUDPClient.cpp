@@ -109,6 +109,7 @@ void DeviceUDPClient::stop()
 
 void DeviceUDPClient::onPacketReceived(unsigned long curTime, IPAddress srcAddress, uint16_t srcPort, uint8_t* pData, uint16_t size)
 {
+  Serial.println("Packet received!");
   if(size < 16)
   {
     Serial.println("Packet too small");
@@ -125,6 +126,11 @@ void DeviceUDPClient::onPacketReceived(unsigned long curTime, IPAddress srcAddre
   _lastReceiveTime = curTime;
   if(command == MSGACK)
   {
+    Serial.print("MSGACK, msgID: ");
+    Serial.print(msgId);
+    Serial.print(", _curMsgID: ");
+    Serial.println(_curMsgId);
+
     if(_isSending && msgId == _curMsgId)
     {
       _isSending = false;
